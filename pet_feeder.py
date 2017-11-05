@@ -18,8 +18,8 @@ LOG_FILE = 'log.txt'
 # Set sensor settings
 sensor.reset()
 sensor.set_framesize(sensor.QVGA)   # 320x240
-sensor.set_pixformat(sensor.RGB565)
-#sensor.skip_frames(time = 400)     # skip frames for x milliseconds
+sensor.set_pixformat(sensor.GRAYSCALE)
+sensor.skip_frames()
 
 # Init wlan module and connect to network
 wlan = network.WINC()
