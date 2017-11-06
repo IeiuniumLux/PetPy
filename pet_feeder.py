@@ -17,8 +17,8 @@ LOG_FILE = 'log.txt'
 
 # Set sensor settings
 sensor.reset()
-sensor.set_framesize(sensor.QVGA)   # 320x240
-sensor.set_pixformat(sensor.GRAYSCALE)
+sensor.set_framesize(sensor.QQVGA)   # QVGA 320x240
+sensor.set_pixformat(sensor.GRAYSCALE)  # RGB565 / GRAYSCALE
 sensor.skip_frames()
 
 # Init wlan module and connect to network
