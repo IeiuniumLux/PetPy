@@ -1,7 +1,8 @@
 # PetPy
+PetPy is built on [MicroPython](http://micropython.org), the lean implementation of the Python 3 standard library that is optimised to run on microcontrollers and in constrained environments.  
 When away, make sure your pet (fish, cat, dog, etc.) never goes hungry with this remote activated feeder/treat dispenser.
 
-*DISCLAIMER: This web server is not meant to serve millions of connections or thousands of users since there's not much memory in the micropython boards and not a lot of processing power either. Therefore, this is really meant to just serve one user connection. However, it' nice to see that it can easly act as a simple control interface to publish an API or a protocol so a web page can send a request to turn ON a light, a relay, a servo, or read analog inputs like the kind used for IOT projects. Also notice that I have little to no HTML, CSS, and Javascript experience so the code can definitely be improved.*
+*NOTE: This web server is not meant to serve hundreds of connections or users since there's not much memory in the micropython boards and not a lot of processing power either. Therefore, this is really meant to just serve one user connection. However, it' nice to see that it can easly act as a simple control interface so a web page can send remote requests to control devices, or read analog inputs like the kind used for IOT projects. Notice also that I have little to no HTML, CSS, and Javascript experience so the code can definitely be improved.*
 
 ## How it works:
 
