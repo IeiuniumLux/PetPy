@@ -1,7 +1,7 @@
 # PetPy
 PetPy is a simple local HTTP server that lets you feed your pet remotely. The server receives a HTTP signal through the browser to activte the feeder. A food container (with a small hole in its side) is attached to the servo and when the it turns, a few pellets/kibble/treats drop into the bowl. You can adjust the hole and size of the container accordingly depending on whether you are feeding a cat, dog, or fish.
 
-![PetPy](./img/image1.png)
+![PetPy](./img/image2.png)
 
 ## Technology
 PetPy is built on [MicroPython](http://micropython.org), the lean implementation of the Python 3 standard library that is optimised to run on microcontrollers and in constrained environments.  It uses the [GitHub Pages](https://pages.github.com/) to server the style.css as an external remote file instead of having it embedded into the Python script.
