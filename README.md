@@ -20,6 +20,8 @@ Part             | Qty
 [4" x 4" Acrylic/Plexiglass Block](https://www.ebay.com/itm/292072330728 "Base")<br /> | 1 
 [CAD Parts](stl/ "STL files")<br />*OpenMV mount by Chris Anderson and Feeder by littleBits* |
 
+![Parts](/img/3D-parts.png)
+
 ## Resources
 [HTML Minifier](https://kangax.github.io/html-minifier/ "Minifier")<br />
 [CSS & Javascript Minifier](http://cnvyr.io/online "css/javascript minifier")<br />
