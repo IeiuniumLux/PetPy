@@ -23,11 +23,9 @@ Part             | Qty
 ![Parts](/img/3D-parts.png)
 
 ## Resources
-[HTML Minifier](https://kangax.github.io/html-minifier/ "Minifier")<br />
-[CSS & Javascript Minifier](http://cnvyr.io/online "css/javascript minifier")<br />
+[Minifier](http://minifycode.com/html-minifier/ "Minifier")<br />
 [CSS Validator](http://jigsaw.w3.org/css-validator/#validate_by_input "Validator")<br />
 [Date/Epoch Converter](http://www.esqsoft.com/javascript_examples/date-to-epoch.htm "Converter")<br />
-[Epoch & Unix Timestamp Conversion Tools](https://www.epochconverter.com/ "Converter 2")<br />
 
 ## Final Thoughts
 It's nice to see that a pyboard like the OpenMV, can easly act as a simple control interface so a web page can send remote requests to control devices; or read analog inputs like the kind used for IOT projects. However, it is not intended to serve hundreds of connections or users since there's not much memory in the micropython boards and not a lot of processing power either. For this project in particular, PetPy is really meant to just serve one user connection, but it's simple and hackable enough to be used for testing, local development, and learning. Finally, notice that I have little to no HTML, CSS, and Javascript experience so the code can definitely be improved.
