@@ -19,6 +19,7 @@ DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 sensor.reset()
 sensor.set_framesize(sensor.QQVGA)  # 160x120 resolution
 sensor.set_pixformat(sensor.GRAYSCALE)
+sensor.skip_frames()
 
 # Init wlan module and connect to 2.4 GHz wifi
 wlan = network.WINC()
@@ -132,7 +133,7 @@ def feed(key, client):
         "server: PetPy.net\r\n" \
         "content-type: text/html\r\n" \
         "vary: Accept-Encoding\r\n" \
-        "cache-control: max-age=0,must-revalidate\r\n\r\n")
+        "cache-control: no-cache\r\n\r\n")
 
 
 @app.route('/static/(.+)')
