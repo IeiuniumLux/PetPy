@@ -77,7 +77,7 @@ class WSGIServer():
                     client.send("HTTP/1.1 404 Not Found\r\n\r\n")
                     response = """<!DOCTYPE html>
                     <html><body>
-                    <center><h3>Error 404: File not found</h3><p>PetPy HTTP Server</p></center>
+                    <center><h3>Error 404: Page not found</h3><p>PetPy HTTP Server</p></center>
                     </body></html>"""
                     client.send(response.encode('utf-8'))
 
