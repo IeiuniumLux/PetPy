@@ -97,7 +97,7 @@ def index(key, client):
                 "server: PetPy.net\r\n" \
                 "content-type: text/html; charset=utf-8\r\n" \
                 "vary: Accept-Encoding\r\n" \
-                "cache-control: no-cache,must-revalidate\r\n\r\n")
+                "cache-control: no-cache\r\n\r\n")
     lf = utime.localtime(get_last_feed())
     ptag = '<p id="lastfeed">Last Feed: %s %d @ %02d:%02d</p>' % (DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
     with open('index.htm', 'r') as html:
