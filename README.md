@@ -1,8 +1,10 @@
 # PetPy
-PetPy is a simple local HTTP server that lets you feed your pet remotely. The server receives a HTTP signal through the browser to activte the feeder. A food container (with a small hole in its side) is attached to a servo and when it turns, a few pellets/kibble/treats drop into the bowl. You can adjust the hole and size of the container accordingly depending on whether you are feeding a cat, dog, or fish.
+PetPy is a single page application (SPA) that lets you feed your pet remotely. It implements a simple local HTTP server that handles the request to activte the feeder. A food container (with a small hole in its side) is attached to a servo and when it turns, a few pellets/kibble/treats drop into the bowl. You can adjust the hole and size of the container depending on whether you are feeding a fish, cat, dog, etc.
 
 ## Technology
 PetPy is built on [MicroPython](http://micropython.org), the lean implementation of the Python 3 standard library that is optimised to run on microcontrollers and in constrained environments. The JPEG image is updated on the client using AJAX short polling and the CSS style sheet used to customize the single HTML page, it's served using the [GitHub Pages](https://pages.github.com/).
+
+> Notice that PetPy is not intended to serve hundreds of connections or users since there's not much memory in the micropython boards and not a lot of processing power either. Therefore, it's really meant to just serve one user connection.  However, it's simple and hackable enough that can be adapted for other projects or used for testing, local development, and learning.
 
 ## Parts
 
@@ -26,6 +28,8 @@ Part             | Qty
 [Minifier](http://minifycode.com/html-minifier/ "Minifier")<br />
 [CSS Validator](http://jigsaw.w3.org/css-validator/#validate_by_input "Validator")<br />
 [Date/Epoch Converter](http://www.esqsoft.com/javascript_examples/date-to-epoch.htm "Converter")<br />
+[Router Port Forwarding](https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/)<br />
+[Google Domains](https://domains.google/#/)<br />
 
 ## Final Thoughts
-It's nice to see that a pyboard like the OpenMV, can easly act as a simple control interface so a web page can send remote requests to control devices; or read analog inputs like the kind used for IOT projects. However, it is not intended to serve hundreds of connections or users since there's not much memory in the micropython boards and not a lot of processing power either. For this project in particular, PetPy is really meant to just serve one user connection, but it's simple and hackable enough to be used for testing, local development, and learning. Finally, notice that I have little to no HTML, CSS, and Javascript experience so the code can definitely be improved.
+It's nice to see that pyboards with WiFi modules, can easly act as a simple control interface so a single page application (SPA) can send remote requests to control devices; or read analog inputs like the kind used for IOT projects.

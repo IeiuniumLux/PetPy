@@ -78,3 +78,16 @@ h1 {
   border-radius: 4px;
   box-shadow: 0px 2px 10px 0px rgba(0,0,0,0.5);
 }
+
+input[type="password"] {
+  border: 1px solid #a1a3a3;
+  border-radius: 4px;
+  box-shadow: 0 1px #fff;
+  box-sizing: border-box;
+  color: #696969;
+  height: 39px;
+  margin: 31px 0 0 29px;
+  padding-left: 37px;
+  transition: box-shadow 0.3s;
+  width: 240px;
+}

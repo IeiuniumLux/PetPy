@@ -1,6 +1,6 @@
 # Pet Feeder - By: Al Bee - Sun Nov 28 2017
 
-import sensor, image, network, usocket, ure, utime, uos, ubinascii, uhashlib, sys
+import sensor, image, network, usocket, ure, utime, uos, ubinascii, uhashlib, sys, ujson
 from pyb import LED
 from pyb import Servo
 
@@ -67,6 +67,14 @@ class WSGIServer():
                 blue_led.on()
                 client.settimeout(9.0)
                 request = client.recv(1024).decode('utf-8')
+
+                # HTTP headers are split from the body by a \r\n\r\n sequence
+                (headers, body) = request.split("\r\n\r\n")
+                if body:
+                   data = ujson.loads(str(body))
+                   token = data["password"]
+                   print(token)
+
                 path_info = get_path_info(request.splitlines()[0])
                 route_match = self.get_route_match(path_info)
                 if route_match:
@@ -74,12 +82,7 @@ class WSGIServer():
                     view_function(**dict(kwargs, client=client))
                 else:
                     print('Route "{}" has not been registered'.format(path_info))
-                    client.send("HTTP/1.1 404 Not Found\r\n\r\n")
-                    response = """<!DOCTYPE html>
-                    <html><body>
-                    <center><h3>Error 404: Page not found</h3><p>PetPy HTTP Server</p></center>
-                    </body></html>"""
-                    client.send(response.encode('utf-8'))
+                    sendError(client)
 
             except OSError as err:
                 pass
@@ -90,20 +93,23 @@ class WSGIServer():
 
 app = WSGIServer()
 
-
 @app.route('/')
 def index(key, client):
-    client.send("HTTP/1.1 200 OK\r\n" \
-                "server: PetPy.net\r\n" \
-                "content-type: text/html; charset=utf-8\r\n" \
-                "vary: Accept-Encoding\r\n" \
-                "cache-control: no-cache\r\n\r\n")
-    lf = utime.localtime(get_last_feed())
-    ptag = '<p id="lastfeed">Last Feed: %s %d @ %02d:%02d</p>' % (DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
-    with open('index.htm', 'r') as html:
-        response = html.read() % ptag
-        client.send(response.encode('utf-8'))
-
+    try:
+        with open('login.html', 'r') as html:
+            client.send("HTTP/1.1 200 OK\r\n" \
+                    "server: PetPy.net\r\n" \
+                    "content-type: text/html; charset=utf-8\r\n" \
+                    "access-control-allow-origin: http://petpy.net\r\n" \
+                    "access-control-allow-methods: GET, POST\r\n" \
+                    "vary: accept-encoding\r\n" \
+                    "cache-control: no-cache\r\n\r\n")
+            lf = utime.localtime(get_last_feed())
+            ptag = '<p id="lastfeed">Last Feed: %s %d @ %02d:%02d</p>' % (DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
+            response = html.read() % ptag
+            client.send(response.encode('utf-8'))
+    except OSError:
+        sendError(client)
 
 @app.route('/(\d+.)')
 def stream(key, client):
@@ -121,11 +127,21 @@ def stream(key, client):
     client.send(cframe)
 
 
+@app.route('/login')
+def login(key, client):
+    client.send("HTTP/1.1 200 OK\r\n" \
+            "server: PetPy.net\r\n" \
+            "content-type: text/html; charset=utf-8\r\n" \
+            "access-control-allow-origin: http://petpy.net\r\n" \
+            "vary: Accept-Encoding\r\n" \
+            "cache-control: no-cache\r\n\r\n")
+
+
 @app.route('/feed/(\d+.)')
 def feed(key, client):
     green_led.on()
     servo.pulse_width(2100)
-    utime.sleep_ms(500)
+    utime.sleep_ms(400)
     servo.pulse_width(500)
     green_led.off()
     set_last_feed(key[6:])
@@ -141,7 +157,7 @@ def resource(key, client):
     encoding = 'identity'
     if (key.endswith(".js")):
         mimetype = 'application/javascript; charset=utf-8'
-        encoding = 'gzip'
+        #encoding = 'gzip'
     elif (key.endswith(".css")):
         mimetype = 'text/css; charset=utf-8'
         encoding = 'gzip'
@@ -159,7 +175,7 @@ def resource(key, client):
     client.send("HTTP/1.1 200 OK\r\n" \
                 "server: PetPy.net\r\n" \
                 "content-type:" + mimetype + "\r\n" \
-                "access-control-allow-origin: *\r\n" \
+                "access-control-allow-origin: http://petpy.net\r\n" \
                 "content-length:" + str(filesize) + "\r\n" \
                 "content-encoding:" + str(encoding) + "\r\n" \
                 "accept-ranges: bytes\r\n" \
@@ -169,9 +185,20 @@ def resource(key, client):
     with open(key, 'rb') as f:
         client.send(f.read())
 
+
+def sendError(client):
+    client.send("HTTP/1.1 404 Not Found\r\n\r\n")
+    response = """<!DOCTYPE html>
+        <html><body>
+        <center><h3>Error 404: Page not found</h3><p>PetPy HTTP Server</p></center>
+        </body></html>"""
+    client.send(response.encode('utf-8'))
+
+
 def getsize(filename):
     info = uos.stat(filename)
     return info[6]
+
 
 def get_last_feed():
     try:
@@ -188,6 +215,7 @@ def get_last_feed():
         v = 0
     return v
 
+
 def set_last_feed(value):
     try:
         with open(LOG_FILE, "w") as f:
@@ -195,10 +223,12 @@ def set_last_feed(value):
     except OSError:
         pass
 
+
 def hash(s):
     hash = uhashlib.sha256(s.encode()).digest()
     encoded = ubinascii.b2a_base64(hash)
     return encoded
+
 
 if __name__ == '__main__':
     app.run()
