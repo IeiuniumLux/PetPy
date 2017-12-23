@@ -9,8 +9,8 @@ blue_led = LED(3)
 servo = Servo(3)  # P9
 servo.pulse_width(500)
 
-SSID = 'YOUR_2.4GHz_SSID'
-KEY = 'YOUR_2.4GHz_KEY'
+SSID = 'YOUR_SSID'
+KEY = 'YOUR_KEY'
 LOG_FILE = 'log.txt'
 AUTH_FILE = 'auth.dat'
 DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -31,8 +31,6 @@ server.bind(['', 8088])
 server.listen(1)
 server.settimeout(0)  # Set server socket to non-blocking
 
-get_path_info = lambda x: x.split()[1]
-
 
 class WSGIServer():
     def __init__(self):
@@ -50,13 +48,13 @@ class WSGIServer():
         return decorator
 
     def get_route_match(self, path):
-        for route_pattern, view_function in self.routes:
+        for route_pattern, route_function in self.routes:
             m = route_pattern.match(path)
             if m:
                 if m.group(0) is not None:
-                    return dict([("key", m.group(0))]), view_function
+                    return dict([("key", m.group(0))]), route_function
                 else:
-                    return {}, view_function
+                    return {}, route_function
         return None
 
     def run(self):
@@ -67,6 +65,7 @@ class WSGIServer():
                 blue_led.on()
                 client.settimeout(9.0)
                 request = client.recv(1024).decode('utf-8')
+                get_token(request)
 
                 # HTTP headers are split from the body by a \r\n\r\n sequence
                 (headers, body) = request.split("\r\n\r\n")
@@ -75,14 +74,14 @@ class WSGIServer():
                    token = data["password"]
                    print(token)
 
-                path_info = get_path_info(request.splitlines()[0])
+                path_info = request.splitlines()[0].split()[1]
                 route_match = self.get_route_match(path_info)
                 if route_match:
-                    kwargs, view_function = route_match
-                    view_function(**dict(kwargs, client=client))
+                    kwargs, route_function = route_match
+                    route_function(**dict(kwargs, client=client))
                 else:
                     print('Route "{}" has not been registered'.format(path_info))
-                    sendError(client)
+                    error(client)
 
             except OSError as err:
                 pass
@@ -96,7 +95,7 @@ app = WSGIServer()
 @app.route('/')
 def index(key, client):
     try:
-        with open('login.html', 'r') as html:
+        with open('index.html', 'r') as html:
             client.send("HTTP/1.1 200 OK\r\n" \
                     "server: PetPy.net\r\n" \
                     "content-type: text/html; charset=utf-8\r\n" \
@@ -104,12 +103,12 @@ def index(key, client):
                     "access-control-allow-methods: GET, POST\r\n" \
                     "vary: accept-encoding\r\n" \
                     "cache-control: no-cache\r\n\r\n")
-            lf = utime.localtime(get_last_feed())
+            lf = utime.localtime(int(get_value(LOG_FILE)))
             ptag = '<p id="lastfeed">Last Feed: %s %d @ %02d:%02d</p>' % (DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
             response = html.read() % ptag
             client.send(response.encode('utf-8'))
     except OSError:
-        sendError(client)
+        error(client)
 
 @app.route('/(\d+.)')
 def stream(key, client):
@@ -144,7 +143,7 @@ def feed(key, client):
     utime.sleep_ms(400)
     servo.pulse_width(500)
     green_led.off()
-    set_last_feed(key[6:])
+    save_value(LOG_FILE, str(key[6:]))
     client.send("HTTP/1.1 200 OK\r\n" \
         "server: PetPy.net\r\n" \
         "content-type: text/html\r\n" \
@@ -186,13 +185,32 @@ def resource(key, client):
         client.send(f.read())
 
 
-def sendError(client):
+def error(client):
     client.send("HTTP/1.1 404 Not Found\r\n\r\n")
     response = """<!DOCTYPE html>
-        <html><body>
+        <html><head><meta charset="UTF-8"></head><body>
         <center><h3>Error 404: Page not found</h3><p>PetPy HTTP Server</p></center>
         </body></html>"""
     client.send(response.encode('utf-8'))
+
+
+def get_token(request):
+    """Return a dictionary in the form Header => Value for all headers in
+    *request*."""
+    headers = {}
+    for line in request.split('\n')[1:]:
+        # blank line separates headers from content
+        if line == '\r':
+            break
+        header_line = line.partition(':')
+        headers[header_line[0].lower()] = header_line[2].strip()
+
+    #if 'cookie' not in headers:
+       #print(len(headers))
+
+    #print(headers.keys())
+    #print(headers['host'])
+    return headers
 
 
 def getsize(filename):
@@ -200,26 +218,21 @@ def getsize(filename):
     return info[6]
 
 
-def get_last_feed():
+def get_value(file_name):
+    v = '0'
     try:
-        with open(LOG_FILE) as f:
-            v = int(f.read())
+        with open(file_name) as f:
+            v = f.read()
     except OSError:
-        v = 0
-        try:
-            with open(LOG_FILE, "w") as f:
-                f.write(str(v))
-        except OSError:
-            pass
-    except ValueError:
-        v = 0
+        save_value(v)
+
     return v
 
 
-def set_last_feed(value):
+def save_value(file_name, value):
     try:
-        with open(LOG_FILE, "w") as f:
-            f.write(str(value))
+        with open(file_name, "w") as f:
+            f.write(value)
     except OSError:
         pass
 
