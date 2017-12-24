@@ -9,8 +9,8 @@ blue_led = LED(3)
 servo = Servo(3)  # P9
 servo.pulse_width(500)
 
-SSID = 'YOUR_SSID'
-KEY = 'YOUR_KEY'
+SSID = 'AAGG-W24'
+KEY = 'Wireless4me'
 LOG_FILE = 'log.txt'
 AUTH_FILE = 'auth.dat'
 DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -223,7 +223,7 @@ def read_value(filename):
         with open(filename) as f:
             v = f.read()
     except OSError:
-        save_value(v)
+        save_value(filename, v)
 
     return v
 
