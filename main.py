@@ -25,16 +25,12 @@ sensor.skip_frames()
 wlan = network.WINC()
 wlan.connect(SSID, key=KEY, security=wlan.WPA_PSK)
 
-# Create server socket
-server = usocket.socket(usocket.AF_INET, usocket.SOCK_STREAM)
-server.bind(['', 8088])
-server.listen(1)
-server.settimeout(0)  # Set server socket to non-blocking
 
+class HTTPServer():
 
-class WSGIServer():
     def __init__(self):
         self.routes = []
+        self.secret_key = None
 
     @staticmethod
     def build_route_pattern(route):
@@ -57,17 +53,20 @@ class WSGIServer():
                     return {}, route_function
         return None
 
-    def run(self):
+    def run(self, host=None, port=None):
+        server = usocket.socket(usocket.AF_INET, usocket.SOCK_STREAM)
+        server.bind([host, port])
+        server.listen(1)
+        server.settimeout(0)  # Set server socket to non-blocking
         while True:
             try:
                 blue_led.off()
-                client, addr = server.accept()
+                conn, addr = server.accept()
                 blue_led.on()
-                client.settimeout(9.0)
-                request = client.recv(1024).decode('utf-8')
+                conn.settimeout(9.0)
+                request = conn.recv(1024).decode('utf-8')
                 get_token(request)
 
-                # HTTP headers are split from the body by a \r\n\r\n sequence
                 (headers, body) = request.split("\r\n\r\n")
                 if body:
                    data = ujson.loads(str(body))
@@ -78,57 +77,57 @@ class WSGIServer():
                 route_match = self.get_route_match(path_info)
                 if route_match:
                     kwargs, route_function = route_match
-                    route_function(**dict(kwargs, client=client))
+                    route_function(**dict(kwargs, conn=conn, request=request))
                 else:
                     print('Route "{}" has not been registered'.format(path_info))
-                    error(client)
+                    error(conn)
 
             except OSError as err:
                 pass
             except:
                 raise
-            client.close()
+            conn.close()
 
 
-app = WSGIServer()
+app = HTTPServer()
 
 @app.route('/')
-def index(key, client):
+def index(key, conn, request):
     try:
-        with open('index.html', 'r') as html:
-            client.send("HTTP/1.1 200 OK\r\n" \
+        with open('/static/index.html', 'r') as html:
+            conn.send("HTTP/1.1 200 OK\r\n" \
                     "server: PetPy.net\r\n" \
                     "content-type: text/html; charset=utf-8\r\n" \
                     "access-control-allow-origin: http://petpy.net\r\n" \
                     "access-control-allow-methods: GET, POST\r\n" \
                     "vary: accept-encoding\r\n" \
                     "cache-control: no-cache\r\n\r\n")
-            lf = utime.localtime(int(get_value(LOG_FILE)))
+            lf = utime.localtime(int(read_value(LOG_FILE)))
             ptag = '<p id="lastfeed">Last Feed: %s %d @ %02d:%02d</p>' % (DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
             response = html.read() % ptag
-            client.send(response.encode('utf-8'))
+            conn.send(response.encode('utf-8'))
     except OSError:
-        error(client)
+        error(conn)
 
 @app.route('/(\d+.)')
-def stream(key, client):
+def stream(key, conn, request):
     # Send multipart header
-    client.send("HTTP/1.1 200 OK\r\n" \
+    conn.send("HTTP/1.1 200 OK\r\n" \
                 "server: PetPy.net\r\n" \
                 "content-type: multipart/x-mixed-replace;boundary=stream\r\n" \
                 "vary: Accept-Encoding\r\n" \
                 "cache-control: no-cache\r\n\r\n")
     frame = sensor.snapshot()
     cframe = frame.compressed(quality=50)
-    client.send("\r\n--stream\r\n" \
+    conn.send("\r\n--stream\r\n" \
                 "content-type: image/jpeg\r\n" \
                 "content-length:" + str(cframe.size()) + "\r\n\r\n")
-    client.send(cframe)
+    conn.send(cframe)
 
 
 @app.route('/login')
-def login(key, client):
-    client.send("HTTP/1.1 200 OK\r\n" \
+def login(key, conn, request):
+    conn.send("HTTP/1.1 200 OK\r\n" \
             "server: PetPy.net\r\n" \
             "content-type: text/html; charset=utf-8\r\n" \
             "access-control-allow-origin: http://petpy.net\r\n" \
@@ -137,14 +136,14 @@ def login(key, client):
 
 
 @app.route('/feed/(\d+.)')
-def feed(key, client):
+def feed(key, conn, request):
     green_led.on()
     servo.pulse_width(2100)
     utime.sleep_ms(400)
     servo.pulse_width(500)
     green_led.off()
     save_value(LOG_FILE, str(key[6:]))
-    client.send("HTTP/1.1 200 OK\r\n" \
+    conn.send("HTTP/1.1 200 OK\r\n" \
         "server: PetPy.net\r\n" \
         "content-type: text/html\r\n" \
         "vary: Accept-Encoding\r\n" \
@@ -152,7 +151,7 @@ def feed(key, client):
 
 
 @app.route('/static/(.+)')
-def resource(key, client):
+def resource(key, conn, request):
     encoding = 'identity'
     if (key.endswith(".js")):
         mimetype = 'application/javascript; charset=utf-8'
@@ -169,9 +168,9 @@ def resource(key, client):
     else:
         mimetype = 'text/html'
 
-    filesize = getsize(key)
+    filesize = get_size(key)
 
-    client.send("HTTP/1.1 200 OK\r\n" \
+    conn.send("HTTP/1.1 200 OK\r\n" \
                 "server: PetPy.net\r\n" \
                 "content-type:" + mimetype + "\r\n" \
                 "access-control-allow-origin: http://petpy.net\r\n" \
@@ -182,16 +181,16 @@ def resource(key, client):
                 "cache-control: max-age=604800\r\n\r\n")
 
     with open(key, 'rb') as f:
-        client.send(f.read())
+        conn.send(f.read())
 
 
-def error(client):
-    client.send("HTTP/1.1 404 Not Found\r\n\r\n")
+def error(conn):
+    conn.send("HTTP/1.1 404 Not Found\r\n\r\n")
     response = """<!DOCTYPE html>
         <html><head><meta charset="UTF-8"></head><body>
         <center><h3>Error 404: Page not found</h3><p>PetPy HTTP Server</p></center>
         </body></html>"""
-    client.send(response.encode('utf-8'))
+    conn.send(response.encode('utf-8'))
 
 
 def get_token(request):
@@ -213,15 +212,15 @@ def get_token(request):
     return headers
 
 
-def getsize(filename):
+def get_size(filename):
     info = uos.stat(filename)
     return info[6]
 
 
-def get_value(file_name):
+def read_value(filename):
     v = '0'
     try:
-        with open(file_name) as f:
+        with open(filename) as f:
             v = f.read()
     except OSError:
         save_value(v)
@@ -229,9 +228,9 @@ def get_value(file_name):
     return v
 
 
-def save_value(file_name, value):
+def save_value(filename, value):
     try:
-        with open(file_name, "w") as f:
+        with open(filename, "w") as f:
             f.write(value)
     except OSError:
         pass
@@ -244,4 +243,5 @@ def hash(s):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.secret_key = uos.urandom(12)
+    app.run('', 8088)

@@ -2,7 +2,7 @@
 PetPy is a single page application that lets you feed your pet remotely. It implements a simple local HTTP server that handles the request to activate the feeder. A food container (with a small hole in its side) is attached to a servo and when it turns, a few pellets/kibble/treats drop into the bowl. You can adjust the hole and size of the container depending on whether you are feeding a fish, cat, dog, etc.
 
 ## Technology
-PetPy is built on [MicroPython](http://micropython.org), the lean implementation of the Python 3 standard library that is optimised to run on microcontrollers and in constrained environments. The JPEG image is updated on the client using AJAX short polling and the CSS style sheet used to customize the single HTML page, it's served using the [GitHub Pages](https://pages.github.com/).
+PetPy is a DIY project built on [MicroPython](http://micropython.org), the lean implementation of the Python 3 standard library that is optimised to run on microcontrollers and in constrained environments. The JPEG image is updated on the client using AJAX short polling and the CSS style sheet used to customize the single HTML page, it's served using the [GitHub Pages](https://pages.github.com/).
 
 > Notice that PetPy is not intended to serve hundreds of connections or users since there's not much memory in the micropython boards and not a lot of processing power either. Therefore, it's really meant to just serve one user connection.  However, it's simple and hackable enough that can be adapted for other projects or used for testing, local development, and learning.
 
@@ -33,4 +33,4 @@ Part             | Qty
 
 
 ## Final Thoughts
-It's nice to see that pyboards with WiFi modules, can easly act as a simple control interface so a single page application (SPA) can send remote requests to control devices; or read analog inputs like the kind used for IOT projects.
+It's nice to see that pyboards with WiFi modules, can easly act as a simple control interface to send remote requests to control devices; or read analog inputs like the kind used for IOT projects.
