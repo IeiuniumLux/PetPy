@@ -9,8 +9,8 @@ blue_led = LED(3)
 servo = Servo(3)  # P9
 servo.pulse_width(500)
 
-SSID = 'AAGG-W24'
-KEY = 'Wireless4me'
+SSID = 'YOUR_SSID'
+KEY = 'YOUR_KEY'
 LOG_FILE = 'log.txt'
 AUTH_FILE = 'auth.dat'
 DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -65,13 +65,14 @@ class HTTPServer():
                 blue_led.on()
                 conn.settimeout(9.0)
                 request = conn.recv(1024).decode('utf-8')
-                get_token(request)
 
-                (headers, body) = request.split("\r\n\r\n")
-                if body:
-                   data = ujson.loads(str(body))
-                   token = data["password"]
-                   print(token)
+                # HTTP headers are split from body by a \r\n\r\n sequence
+                #(headers, body) = request.split("\r\n\r\n")
+                #if body:
+                   #data = ujson.loads(str(body))
+                   #token = data["password"]
+                   #print(token)
+                #hash("alert('Hello, world.');")
 
                 path_info = request.splitlines()[0].split()[1]
                 route_match = self.get_route_match(path_info)
@@ -85,7 +86,10 @@ class HTTPServer():
             except OSError as err:
                 pass
             except:
+                blue_led.off()
+                conn.close()
                 raise
+
             conn.close()
 
 
@@ -94,13 +98,20 @@ app = HTTPServer()
 @app.route('/')
 def index(key, conn, request):
     try:
-        with open('/static/index.html', 'r') as html:
+        filename = '/static/index.html'
+        headers = parse_headers(request)
+        if not isset(headers, 'cookie'):
+            filename = '/static/login.html'
+        with open(filename, 'r') as html:
             conn.send("HTTP/1.1 200 OK\r\n" \
                     "server: PetPy.net\r\n" \
                     "content-type: text/html; charset=utf-8\r\n" \
                     "access-control-allow-origin: http://petpy.net\r\n" \
                     "access-control-allow-methods: GET, POST\r\n" \
+                    "access-control-allow-credentials: true\r\n" \
+                    "set-cookie: token=eyJhbGciOiJIUzI1NiIsI; HttpOnly;\r\n" \
                     "vary: accept-encoding\r\n" \
+                    "pragma: no-cache\r\n" \
                     "cache-control: no-cache\r\n\r\n")
             lf = utime.localtime(int(read_value(LOG_FILE)))
             ptag = '<p id="lastfeed">Last Feed: %s %d @ %02d:%02d</p>' % (DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
@@ -193,9 +204,7 @@ def error(conn):
     conn.send(response.encode('utf-8'))
 
 
-def get_token(request):
-    """Return a dictionary in the form Header => Value for all headers in
-    *request*."""
+def parse_headers(request):
     headers = {}
     for line in request.split('\n')[1:]:
         # blank line separates headers from content
@@ -204,12 +213,15 @@ def get_token(request):
         header_line = line.partition(':')
         headers[header_line[0].lower()] = header_line[2].strip()
 
-    #if 'cookie' not in headers:
-       #print(len(headers))
-
-    #print(headers.keys())
-    #print(headers['host'])
     return headers
+
+
+def isset(headers, key):
+    value = None
+    if key in headers:
+       value = headers[key]
+
+    return value
 
 
 def get_size(filename):
@@ -218,7 +230,7 @@ def get_size(filename):
 
 
 def read_value(filename):
-    v = '0'
+    v = str(0)
     try:
         with open(filename) as f:
             v = f.read()
@@ -239,6 +251,7 @@ def save_value(filename, value):
 def hash(s):
     hash = uhashlib.sha256(s.encode()).digest()
     encoded = ubinascii.b2a_base64(hash)
+    print(encoded)
     return encoded
 
 

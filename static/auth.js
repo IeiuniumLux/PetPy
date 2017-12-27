@@ -1,9 +1,9 @@
 (function pullImage() {
-    document.querySelector(".login").addEventListener('click', getToken);})();
+    document.querySelector(".btn").addEventListener('click', getToken);})();
 
 function getToken(obj) {
     var xhr = new XMLHttpRequest();
-    var passwordElement = document.getElementById('password');
+    var passwordElement = document.getElementById('login-pass');
     var password = passwordElement.value;
     
     xhr.open('POST', '/login');

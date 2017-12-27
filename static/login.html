@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta content="default-src *; script-src 'self' 'unsafe-inline' *; style-src 'self' 'unsafe-inline' *; img-src 'self' data: *" http-equiv="Content-Security-Policy">
-    <title>Pet Feeder</title>
-    <link href="http://ieiuniumlux.github.io/PetPy/static/style.css" rel="stylesheet">
-    <link href="http://ieiuniumlux.github.io/PetPy/static/favicon.ico" rel="icon" type="image/x-icon">
-</head>
-<body>
-    <header><img alt="pet" height="128" src="http://ieiuniumlux.github.io/PetPy/static/gfish.svg" width="128"></header>
-    <main>
-        <div id="panel">
-            <input type="password" placeholder="password" id="password">
-            <button class="login">Login</button>
-        </div>
-    </main>
-    <footer>
-        <h1>%s</h1>
-    </footer>
-    <script async="" src="/static/auth.js"></script>
-</body>
+   <head>
+      <link href="http://ieiuniumlux.github.io/PetPy/static/auth.css" rel="stylesheet">
+   </head>
+   <body>
+      <div class="login">
+         <div class="login-screen">
+            <div class="app-title">
+               <h1>PetPy</h1>
+            </div>
+            <div class="login-form">
+               <div class="control-group">
+                  <input type="password" class="login-field" value="" placeholder="password" id="login-pass">
+               </div>
+               <button class="btn btn-primary btn-large btn-block">Login</button>
+            </div>
+         </div>
+      </div>
+      <script async="" src="http://ieiuniumlux.github.io/PetPy/static/auth.js"></script>
+   </body>
 </html>
