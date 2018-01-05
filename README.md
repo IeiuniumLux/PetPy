@@ -4,7 +4,7 @@ PetPy is a single page application that lets you feed your pet remotely. It impl
 ## Technology
 PetPy is a DIY project built on [MicroPython](http://micropython.org), the lean implementation of the Python 3 standard library that is optimised to run on microcontrollers and in constrained environments. The JPEG image is updated on the client using AJAX short polling and the CSS style sheet used to customize the single HTML page, it's served using the [GitHub Pages](https://pages.github.com/).
 
-> Notice that PetPy is not intended to serve hundreds of connections or users since there's not much memory in the micropython boards and not a lot of processing power either. Therefore, it's really meant to just serve one user connection.  However, it's simple and hackable enough that can be adapted for other projects or used for testing, local development, and learning.
+> Notice that PetPy is not intended to serve hundreds of connections or users since there's not much memory in the micropython boards and not a lot of processing power either. It's really meant to just serve one user connection.  However, it's simple and hackable enough that can be adapted for other projects or used for testing, local development, and learning.
 
 ## Authentication
 PetPy requires a login first unless the user is detected in the session; which in that case just sends the index.html page.
