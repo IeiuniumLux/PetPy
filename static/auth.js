@@ -8,15 +8,12 @@ function getToken(obj) {
     
     xhr.open('POST', '/login');
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr.addEventListener('load', function() {
-        var responseObject = JSON.parse(this.response);
-        console.log(responseObject);
-        if (responseObject.token) {
-            console.log(responseObject.token);
-        } else {
-            console.log("No token received");
+    xhr.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            window.location.href = "/";
+        } else if (this.readyState == 4 && this.status == 401) {
+            document.getElementById("auth-failed").innerHTML = 'Authentication Failed. Please try again.'
         }
-    });
-    
+    };
     xhr.send(JSON.stringify({password: password}));
 }

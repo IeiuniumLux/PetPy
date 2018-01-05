@@ -6,6 +6,9 @@ PetPy is a DIY project built on [MicroPython](http://micropython.org), the lean 
 
 > Notice that PetPy is not intended to serve hundreds of connections or users since there's not much memory in the micropython boards and not a lot of processing power either. Therefore, it's really meant to just serve one user connection.  However, it's simple and hackable enough that can be adapted for other projects or used for testing, local development, and learning.
 
+## Authentication
+PetPy requires a login first unless the user is detected in the session; which in that case just sends the index.html page.
+
 ## Parts
 
 Below is the list of essential parts you'll need to build the pet feeder.

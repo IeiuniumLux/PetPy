@@ -9,6 +9,9 @@ body {
     background-color: #3498DB;
     padding: 50px;
 }
+.header {
+  min-height: 40px;
+}
 .login {
     margin: 20px auto;
     width: 300px;

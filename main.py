@@ -11,9 +11,10 @@ servo.pulse_width(500)
 
 SSID = 'YOUR_SSID'
 KEY = 'YOUR_KEY'
-LOG_FILE = 'log.txt'
-AUTH_FILE = 'auth.dat'
+LOG_FILE = 'time.log'
+AUTH_FILE = '.htpasswd'
 DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+SHAKES = 2
 
 # Set sensor settings
 sensor.reset()
@@ -30,7 +31,7 @@ class HTTPServer():
 
     def __init__(self):
         self.routes = []
-        self.secret_key = None
+        self.session_key = None
 
     @staticmethod
     def build_route_pattern(route):
@@ -41,6 +42,7 @@ class HTTPServer():
             route_pattern = self.build_route_pattern(route_str)
             self.routes.append((route_pattern, f))
             return f
+
         return decorator
 
     def get_route_match(self, path):
@@ -66,14 +68,6 @@ class HTTPServer():
                 conn.settimeout(9.0)
                 request = conn.recv(1024).decode('utf-8')
 
-                # HTTP headers are split from body by a \r\n\r\n sequence
-                #(headers, body) = request.split("\r\n\r\n")
-                #if body:
-                   #data = ujson.loads(str(body))
-                   #token = data["password"]
-                   #print(token)
-                #hash("alert('Hello, world.');")
-
                 path_info = request.splitlines()[0].split()[1]
                 route_match = self.get_route_match(path_info)
                 if route_match:
@@ -81,7 +75,7 @@ class HTTPServer():
                     route_function(**dict(kwargs, conn=conn, request=request))
                 else:
                     print('Route "{}" has not been registered'.format(path_info))
-                    error(conn)
+                    error(conn, '404 Not Found', 'Error 404: Page not found')
 
             except OSError as err:
                 pass
@@ -95,24 +89,34 @@ class HTTPServer():
 
 app = HTTPServer()
 
+
 @app.route('/')
+@app.route('/login')
 def index(key, conn, request):
     try:
-        filename = '/static/index.html'
-        headers = parse_headers(request)
-        if not isset(headers, 'cookie'):
-            filename = '/static/login.html'
-        with open(filename, 'r') as html:
+        # HTTP headers are split from body by a \r\n\r\n sequence
+        (headers, body) = request.split("\r\n\r\n")
+        if body:
+            data = ujson.loads(str(body))
+            p = data["password"]
+            v = read_value(AUTH_FILE)
+            if (p != v):
+                error(conn, '401 Unauthorized', 'Authentication failed.')
+                return
+
+        elif not hastoken(conn, headers):
+           return
+
+        with open('/static/index.html', 'r') as html:
             conn.send("HTTP/1.1 200 OK\r\n" \
-                    "server: PetPy.net\r\n" \
-                    "content-type: text/html; charset=utf-8\r\n" \
-                    "access-control-allow-origin: http://petpy.net\r\n" \
-                    "access-control-allow-methods: GET, POST\r\n" \
-                    "access-control-allow-credentials: true\r\n" \
-                    "set-cookie: token=eyJhbGciOiJIUzI1NiIsI; HttpOnly;\r\n" \
-                    "vary: accept-encoding\r\n" \
-                    "pragma: no-cache\r\n" \
-                    "cache-control: no-cache\r\n\r\n")
+                      "content-type: text/html; charset=utf-8\r\n" \
+                      "access-control-allow-origin: http://petpy.net\r\n" \
+                      "access-control-allow-methods: GET, POST, OPTIONS\r\n" \
+                      "access-control-allow-credentials: true\r\n" \
+                      "set-cookie: token="+str(app.session_key)+"; HttpOnly;\r\n" \
+                      "vary: accept-encoding\r\n" \
+                      "pragma: no-cache\r\n" \
+                      "cache-control: no-cache\r\n\r\n")
             lf = utime.localtime(int(read_value(LOG_FILE)))
             ptag = '<p id="lastfeed">Last Feed: %s %d @ %02d:%02d</p>' % (DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
             response = html.read() % ptag
@@ -120,45 +124,41 @@ def index(key, conn, request):
     except OSError:
         error(conn)
 
+
 @app.route('/(\d+.)')
 def stream(key, conn, request):
     # Send multipart header
     conn.send("HTTP/1.1 200 OK\r\n" \
-                "server: PetPy.net\r\n" \
-                "content-type: multipart/x-mixed-replace;boundary=stream\r\n" \
-                "vary: Accept-Encoding\r\n" \
-                "cache-control: no-cache\r\n\r\n")
+              "content-type: multipart/x-mixed-replace;boundary=stream\r\n" \
+              "vary: Accept-Encoding\r\n" \
+              "cache-control: no-cache\r\n\r\n")
     frame = sensor.snapshot()
     cframe = frame.compressed(quality=50)
     conn.send("\r\n--stream\r\n" \
-                "content-type: image/jpeg\r\n" \
-                "content-length:" + str(cframe.size()) + "\r\n\r\n")
+              "content-type: image/jpeg\r\n" \
+              "content-length:" + str(cframe.size()) + "\r\n\r\n")
     conn.send(cframe)
-
-
-@app.route('/login')
-def login(key, conn, request):
-    conn.send("HTTP/1.1 200 OK\r\n" \
-            "server: PetPy.net\r\n" \
-            "content-type: text/html; charset=utf-8\r\n" \
-            "access-control-allow-origin: http://petpy.net\r\n" \
-            "vary: Accept-Encoding\r\n" \
-            "cache-control: no-cache\r\n\r\n")
 
 
 @app.route('/feed/(\d+.)')
 def feed(key, conn, request):
+    (headers, body) = request.split("\r\n\r\n")
+    if not hastoken(conn, headers):
+       return
+
     green_led.on()
-    servo.pulse_width(2100)
-    utime.sleep_ms(400)
-    servo.pulse_width(500)
+    counter = 0
+    while counter < SHAKES:
+        servo.pulse_width(2100)
+        utime.sleep_ms(400)
+        servo.pulse_width(500)
+        counter = counter + 1
     green_led.off()
     save_value(LOG_FILE, str(key[6:]))
     conn.send("HTTP/1.1 200 OK\r\n" \
-        "server: PetPy.net\r\n" \
-        "content-type: text/html\r\n" \
-        "vary: Accept-Encoding\r\n" \
-        "cache-control: no-cache\r\n\r\n")
+              "content-type: text/html\r\n" \
+              "vary: Accept-Encoding\r\n" \
+              "cache-control: no-cache\r\n\r\n")
 
 
 @app.route('/static/(.+)')
@@ -166,7 +166,7 @@ def resource(key, conn, request):
     encoding = 'identity'
     if (key.endswith(".js")):
         mimetype = 'application/javascript; charset=utf-8'
-        #encoding = 'gzip'
+        # encoding = 'gzip'
     elif (key.endswith(".css")):
         mimetype = 'text/css; charset=utf-8'
         encoding = 'gzip'
@@ -182,27 +182,44 @@ def resource(key, conn, request):
     filesize = get_size(key)
 
     conn.send("HTTP/1.1 200 OK\r\n" \
-                "server: PetPy.net\r\n" \
-                "content-type:" + mimetype + "\r\n" \
-                "access-control-allow-origin: http://petpy.net\r\n" \
-                "content-length:" + str(filesize) + "\r\n" \
-                "content-encoding:" + str(encoding) + "\r\n" \
-                "accept-ranges: bytes\r\n" \
-                "vary: Accept-Encoding\r\n" \
-                "cache-control: max-age=604800\r\n\r\n")
+              "content-type:" + mimetype + "\r\n" \
+              "access-control-allow-origin: http://petpy.net\r\n" \
+              "content-length:" + str(filesize) + "\r\n" \
+              "content-encoding:" + str(encoding) + "\r\n" \
+              "accept-ranges: bytes\r\n" \
+              "vary: Accept-Encoding\r\n" \
+              "cache-control: max-age=604800\r\n\r\n")
 
     with open(key, 'rb') as f:
         conn.send(f.read())
 
 
-def error(conn):
-    conn.send("HTTP/1.1 404 Not Found\r\n\r\n")
-    response = """<!DOCTYPE html>
-        <html><head><meta charset="UTF-8"></head><body>
-        <center><h3>Error 404: Page not found</h3><p>PetPy HTTP Server</p></center>
+def error(conn, code, message):
+    conn.send("HTTP/1.1 " + str(code) + "\r\n" \
+              "content-type: text/html\r\n" \
+              "vary: Accept-Encoding\r\n" \
+              "cache-control: no-cache\r\n\r\n")
+    html = """<!DOCTYPE html>
+        <html><head><meta charset="UTF-8"></meta></head><body>
+        <center><h3>%s</h3></center>
         </body></html>"""
+    response = html % str(message)
     conn.send(response.encode('utf-8'))
 
+def hastoken(conn, headers):
+    headers = parse_headers(headers)
+    if not isset(headers, 'cookie'):
+        with open('/static/login.html', 'r') as html:
+            conn.send("HTTP/1.1 200 OK\r\n" \
+                      "content-type: text/html; charset=utf-8\r\n" \
+                      "access-control-allow-origin: http://petpy.net\r\n" \
+                      "access-control-allow-methods: GET, POST, OPTIONS\r\n" \
+                      "vary: Accept-Encoding\r\n" \
+                      "cache-control: no-cache\r\n\r\n")
+            conn.send(html.read().encode('utf-8'))
+            return False
+
+    return True
 
 def parse_headers(request):
     headers = {}
@@ -219,26 +236,24 @@ def parse_headers(request):
 def isset(headers, key):
     value = None
     if key in headers:
-       value = headers[key]
-
+        value = headers[key]
     return value
-
 
 def get_size(filename):
     info = uos.stat(filename)
     return info[6]
-
 
 def read_value(filename):
     v = str(0)
     try:
         with open(filename) as f:
             v = f.read()
+            if not v:
+                v = str(0)
     except OSError:
         save_value(filename, v)
 
     return v
-
 
 def save_value(filename, value):
     try:
@@ -247,14 +262,13 @@ def save_value(filename, value):
     except OSError:
         pass
 
-
 def hash(s):
     hash = uhashlib.sha256(s.encode()).digest()
     encoded = ubinascii.b2a_base64(hash)
-    print(encoded)
     return encoded
 
 
 if __name__ == '__main__':
-    app.secret_key = uos.urandom(12)
+    #app.session_key = ubinascii.b2a_base64(uos.urandom(16)).decode("ascii")
+    app.session_key = ubinascii.hexlify(uos.urandom(16)).decode("ascii")
     app.run('', 8088)
