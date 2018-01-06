@@ -1,4 +1,4 @@
-(function pullImage() {
+(function() {
     document.querySelector(".btn").addEventListener('click', getToken);})();
 
 function getToken(obj) {
