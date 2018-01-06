@@ -36,4 +36,4 @@ Part             | Qty
 
 
 ## Final Thoughts
-It's nice to see that pyboards with WiFi modules, can easly act as a simple control interface to send remote requests to control devices; or read analog inputs like the kind used for IOT projects.
+It's nice to see that pyboards with wifi modules, can easly act as a simple control interface to send remote requests to control devices; or read analog inputs like the kind used for IOT projects.

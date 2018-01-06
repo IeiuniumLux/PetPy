@@ -113,7 +113,11 @@ def index(key, conn, request):
                       "access-control-allow-origin: http://petpy.net\r\n" \
                       "access-control-allow-methods: GET, POST, OPTIONS\r\n" \
                       "access-control-allow-credentials: true\r\n" \
-                      "set-cookie: token="+str(app.session_key)+"; HttpOnly;\r\n" \
+                      "content-security-policy: default-src * 'unsafe-inline' 'unsafe-eval';\r\n" \
+                      "x-frame-options: SAMEORIGIN\r\n" \
+                      "x-xss-protection: 1; mode=block\r\n" \
+                      "x-content-type-options: nosniff\r\n" \
+                      "set-cookie: token="+str(app.session_key)+"; Max-Age=2592000; HttpOnly;\r\n" \
                       "vary: accept-encoding\r\n" \
                       "pragma: no-cache\r\n" \
                       "cache-control: no-cache\r\n\r\n")
@@ -130,6 +134,10 @@ def stream(key, conn, request):
     # Send multipart header
     conn.send("HTTP/1.1 200 OK\r\n" \
               "content-type: multipart/x-mixed-replace;boundary=stream\r\n" \
+              "content-security-policy: default-src * 'unsafe-inline' 'unsafe-eval';\r\n" \
+              "x-frame-options: SAMEORIGIN\r\n" \
+              "x-xss-protection: 1; mode=block\r\n" \
+              "x-content-type-options: nosniff\r\n" \
               "vary: Accept-Encoding\r\n" \
               "cache-control: no-cache\r\n\r\n")
     frame = sensor.snapshot()
@@ -169,7 +177,7 @@ def resource(key, conn, request):
         # encoding = 'gzip'
     elif (key.endswith(".css")):
         mimetype = 'text/css; charset=utf-8'
-        encoding = 'gzip'
+        #encoding = 'gzip'
     elif (key.endswith(".ico")):
         mimetype = 'image/x-icon'
     elif (key.endswith(".svg")):
@@ -184,6 +192,10 @@ def resource(key, conn, request):
     conn.send("HTTP/1.1 200 OK\r\n" \
               "content-type:" + mimetype + "\r\n" \
               "access-control-allow-origin: http://petpy.net\r\n" \
+              "content-security-policy: default-src * 'unsafe-inline' 'unsafe-eval';\r\n" \
+              "x-frame-options: SAMEORIGIN\r\n" \
+              "x-xss-protection: 1; mode=block\r\n" \
+              "x-content-type-options: nosniff\r\n" \
               "content-length:" + str(filesize) + "\r\n" \
               "content-encoding:" + str(encoding) + "\r\n" \
               "accept-ranges: bytes\r\n" \
@@ -214,6 +226,10 @@ def hastoken(conn, headers):
                       "content-type: text/html; charset=utf-8\r\n" \
                       "access-control-allow-origin: http://petpy.net\r\n" \
                       "access-control-allow-methods: GET, POST, OPTIONS\r\n" \
+                      "content-security-policy: default-src * 'unsafe-inline' 'unsafe-eval';\r\n" \
+                      "x-frame-options: SAMEORIGIN\r\n" \
+                      "x-xss-protection: 1; mode=block\r\n" \
+                      "x-content-type-options: nosniff\r\n" \
                       "vary: Accept-Encoding\r\n" \
                       "cache-control: no-cache\r\n\r\n")
             conn.send(html.read().encode('utf-8'))
