@@ -10,11 +10,11 @@ servo = Servo(3)  # P9
 servo.pulse_width(500)
 
 SSID = 'YOUR_SSID'
-KEY = 'YOUR_KEY'
+KEY =  'YOUR_KEY'
 LOG_FILE = 'time.log'
 AUTH_FILE = '.htpasswd'
 DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-SHAKES = 2
+TURNS = 1
 
 # Set sensor settings
 sensor.reset()
@@ -94,8 +94,8 @@ app = HTTPServer()
 @app.route('/login')
 def index(key, conn, request):
     try:
-        # HTTP headers are split from body by a \r\n\r\n sequence
-        (headers, body) = request.split("\r\n\r\n")
+        (headers, body) = request.split("\r\n\r\n") # headers are split from body by a \r\n\r\n sequence
+        print(request)
         if body:
             data = ujson.loads(str(body))
             p = data["password"]
@@ -108,21 +108,9 @@ def index(key, conn, request):
            return
 
         with open('/static/index.html', 'r') as html:
-            conn.send("HTTP/1.1 200 OK\r\n" \
-                      "content-type: text/html; charset=utf-8\r\n" \
-                      "access-control-allow-origin: http://petpy.net\r\n" \
-                      "access-control-allow-methods: GET, POST, OPTIONS\r\n" \
-                      "access-control-allow-credentials: true\r\n" \
-                      "content-security-policy: default-src * 'unsafe-inline' 'unsafe-eval';\r\n" \
-                      "x-frame-options: SAMEORIGIN\r\n" \
-                      "x-xss-protection: 1; mode=block\r\n" \
-                      "x-content-type-options: nosniff\r\n" \
-                      "set-cookie: token="+str(app.session_key)+"; Max-Age=2592000; HttpOnly;\r\n" \
-                      "vary: accept-encoding\r\n" \
-                      "pragma: no-cache\r\n" \
-                      "cache-control: no-cache\r\n\r\n")
+            send_headers(conn, True)
             lf = utime.localtime(int(read_value(LOG_FILE)))
-            ptag = '<p id="lastfeed">Last Feed: %s %d @ %02d:%02d</p>' % (DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
+            ptag = '<p id="lastfeed">Last Feed: {} {:d} @ {:02d}:{:02d}</p>'.format(DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
             response = html.read() % ptag
             conn.send(response.encode('utf-8'))
     except OSError:
@@ -134,7 +122,7 @@ def stream(key, conn, request):
     # Send multipart header
     conn.send("HTTP/1.1 200 OK\r\n" \
               "content-type: multipart/x-mixed-replace;boundary=stream\r\n" \
-              "content-security-policy: default-src * 'unsafe-inline' 'unsafe-eval';\r\n" \
+              "content-security-policy: default-src *\r\n" \
               "x-frame-options: SAMEORIGIN\r\n" \
               "x-xss-protection: 1; mode=block\r\n" \
               "x-content-type-options: nosniff\r\n" \
@@ -144,7 +132,7 @@ def stream(key, conn, request):
     cframe = frame.compressed(quality=50)
     conn.send("\r\n--stream\r\n" \
               "content-type: image/jpeg\r\n" \
-              "content-length:" + str(cframe.size()) + "\r\n\r\n")
+              "content-length:{}\r\n\r\n".format(cframe.size()))
     conn.send(cframe)
 
 
@@ -156,27 +144,24 @@ def feed(key, conn, request):
 
     green_led.on()
     counter = 0
-    while counter < SHAKES:
+    while counter < TURNS:
         servo.pulse_width(2100)
         utime.sleep_ms(400)
         servo.pulse_width(500)
         counter = counter + 1
     green_led.off()
     save_value(LOG_FILE, str(key[6:]))
-    conn.send("HTTP/1.1 200 OK\r\n" \
-              "content-type: text/html\r\n" \
-              "vary: Accept-Encoding\r\n" \
-              "cache-control: no-cache\r\n\r\n")
+    send_headers(conn)
 
 
 @app.route('/static/(.+)')
 def resource(key, conn, request):
     encoding = 'identity'
     if (key.endswith(".js")):
-        mimetype = 'application/javascript; charset=utf-8'
+        mimetype = 'application/javascript'
         # encoding = 'gzip'
     elif (key.endswith(".css")):
-        mimetype = 'text/css; charset=utf-8'
+        mimetype = 'text/css'
         #encoding = 'gzip'
     elif (key.endswith(".ico")):
         mimetype = 'image/x-icon'
@@ -189,53 +174,48 @@ def resource(key, conn, request):
 
     filesize = get_size(key)
 
-    conn.send("HTTP/1.1 200 OK\r\n" \
-              "content-type:" + mimetype + "\r\n" \
-              "access-control-allow-origin: http://petpy.net\r\n" \
-              "content-security-policy: default-src * 'unsafe-inline' 'unsafe-eval';\r\n" \
-              "x-frame-options: SAMEORIGIN\r\n" \
-              "x-xss-protection: 1; mode=block\r\n" \
-              "x-content-type-options: nosniff\r\n" \
-              "content-length:" + str(filesize) + "\r\n" \
-              "content-encoding:" + str(encoding) + "\r\n" \
-              "accept-ranges: bytes\r\n" \
-              "vary: Accept-Encoding\r\n" \
-              "cache-control: max-age=604800\r\n\r\n")
+    send_headers(conn, False, mimetype, encoding, 'max-age=604800')
 
     with open(key, 'rb') as f:
         conn.send(f.read())
 
 
 def error(conn, code, message):
-    conn.send("HTTP/1.1 " + str(code) + "\r\n" \
+    conn.send("HTTP/1.1 {}\r\n" \
               "content-type: text/html\r\n" \
               "vary: Accept-Encoding\r\n" \
-              "cache-control: no-cache\r\n\r\n")
+              "cache-control: no-cache\r\n\r\n".format(code))
     html = """<!DOCTYPE html>
         <html><head><meta charset="UTF-8"></meta></head><body>
-        <center><h3>%s</h3></center>
-        </body></html>"""
-    response = html % str(message)
-    conn.send(response.encode('utf-8'))
+        <center><h3>{}</h3></center>
+        </body></html>""".format(message)
+    conn.send(html.encode('utf-8'))
+
 
 def hastoken(conn, headers):
     headers = parse_headers(headers)
     if not isset(headers, 'cookie'):
         with open('/static/login.html', 'r') as html:
-            conn.send("HTTP/1.1 200 OK\r\n" \
-                      "content-type: text/html; charset=utf-8\r\n" \
-                      "access-control-allow-origin: http://petpy.net\r\n" \
-                      "access-control-allow-methods: GET, POST, OPTIONS\r\n" \
-                      "content-security-policy: default-src * 'unsafe-inline' 'unsafe-eval';\r\n" \
-                      "x-frame-options: SAMEORIGIN\r\n" \
-                      "x-xss-protection: 1; mode=block\r\n" \
-                      "x-content-type-options: nosniff\r\n" \
-                      "vary: Accept-Encoding\r\n" \
-                      "cache-control: no-cache\r\n\r\n")
+            send_headers(conn)
             conn.send(html.read().encode('utf-8'))
             return False
-
     return True
+
+
+def send_headers(conn, cookie=False, mimetype='text/html', encoding='identity', cache='no-cache'):
+    conn.send("HTTP/1.1 200 OK\r\n" \
+              "content-type: {0}; charset=UTF-8\r\n" \
+              "access-control-allow-origin: http://23.127.160.111:8088\r\n" \
+              "access-control-allow-methods: POST, GET, OPTIONS\r\n" \
+              "content-security-policy: default-src *\r\n" \
+              "x-frame-options: deny\r\n" \
+              "x-xss-protection: 1; mode=block\r\n" \
+              "x-content-type-options: nosniff\r\n" \
+              "content-encoding: {1}\r\n" \
+              "vary: accept-encoding\r\n" \
+              "cache-control: {2}\r\n{3}".format(mimetype, encoding, cache,
+                       "set-cookie: token={}; HttpOnly;\r\n\r\n".format(app.session_key) if cookie else "\r\n"))
+
 
 def parse_headers(request):
     headers = {}
@@ -245,7 +225,6 @@ def parse_headers(request):
             break
         header_line = line.partition(':')
         headers[header_line[0].lower()] = header_line[2].strip()
-
     return headers
 
 
@@ -255,9 +234,11 @@ def isset(headers, key):
         value = headers[key]
     return value
 
+
 def get_size(filename):
     info = uos.stat(filename)
     return info[6]
+
 
 def read_value(filename):
     v = str(0)
@@ -271,11 +252,13 @@ def read_value(filename):
 
     return v
 
+
 def save_value(filename, value):
     try:
         with open(filename, "w") as f:
             f.write(value)
-    except OSError:
+    except OSError as err:
+        print(err)
         pass
 
 def hash(s):
