@@ -9,6 +9,8 @@ blue_led = LED(3)
 servo = Servo(3)  # P9
 servo.pulse_width(500)
 
+DEBUG = 0
+
 SSID = 'YOUR_SSID'
 KEY =  'YOUR_KEY'
 LOG_FILE = 'time.log'
@@ -74,7 +76,8 @@ class HTTPServer():
                     kwargs, route_function = route_match
                     route_function(**dict(kwargs, conn=conn, request=request))
                 else:
-                    print('Route "{}" has not been registered'.format(path_info))
+                    if DEBUG:
+                        print('Route "{}" has not been registered'.format(path_info))
                     error(conn, '404 Not Found', 'Error 404: Page not found')
 
             except OSError as err:
@@ -95,7 +98,6 @@ app = HTTPServer()
 def index(key, conn, request):
     try:
         (headers, body) = request.split("\r\n\r\n") # headers are split from body by a \r\n\r\n sequence
-        print(request)
         if body:
             data = ujson.loads(str(body))
             p = data["password"]
