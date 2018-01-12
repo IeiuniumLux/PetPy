@@ -1,26 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-   <meta charset="UTF-8" />
-   <title>PetPy</title>
-   <link href="/static/auth.css" rel="stylesheet">
-   <link href="/static/favicon.ico" rel="icon" type="image/x-icon">
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' http://petpy.net %s; style-src 'self'; object-src 'none'">
+    <title>PetPy</title>
+    <link href="/static/favicon.ico" rel="icon" type="image/x-icon">
+    <link href="/static/auth.css" rel="stylesheet">
 </head>
 <body>
-   <div class="header"><h2 id="auth-failed"></h2></div>
-   <div class="login">
-      <div class="login-screen">
-         <div class="app-title">
-            <h1>PetPy</h1>
-         </div>
-         <div class="login-form">
-            <div class="control-group">
-               <input type="password" class="login-field" value="" placeholder="password" id="login-pass">
+    <div class="header">
+        <h2 id="auth-failed"></h2></div>
+    <div class="login">
+        <div class="login-screen">
+            <div class="app-title">
+                <h1>PetPy</h1>
             </div>
-            <button class="btn btn-primary btn-large btn-block">Login</button>
-         </div>
-      </div>
-   </div>
-   <script async src="/static/auth.js"></script>
+            <div class="login-form">
+                <div class="control-group">
+                    <input type="password" class="login-field" value="" placeholder="password" id="login-pass">
+                </div>
+                <button class="btn btn-primary btn-large btn-block">Login</button>
+            </div>
+        </div>
+    </div>
+    <script %s>
+        function getToken(obj) {
+            var xhr = new XMLHttpRequest();
+            var passwordElement = document.getElementById('login-pass');
+            var password = passwordElement.value;
+
+            xhr.open('POST', '/login');
+            xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+            xhr.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    window.location.href = '/';
+                } else if (this.readyState == 4 && this.status == 401) {
+                    document.getElementById("auth-failed").innerHTML = 'Authentication Failed. Please try again.'
+                }
+            };
+            xhr.send(JSON.stringify({
+                password: password
+            }));
+        }
+
+        document.querySelector(".btn").addEventListener('click', getToken);
+    </script>
 </body>
 </html>

@@ -1,22 +1,29 @@
 # Pet Feeder - By: Al Bee - Sun Nov 28 2017
 
-import sensor, image, network, usocket, ure, utime, uos, ubinascii, uhashlib, sys, ujson
+import sensor
+import network
+import usocket
+import ure
+import utime
+import uos
+import ubinascii
+import uhashlib
+import ujson
 from pyb import LED
 from pyb import Servo
 
-green_led = LED(2)
-blue_led = LED(3)
+GREEN_LED = LED(2)
+BLUE_LED = LED(3)
 servo = Servo(3)  # P9
 servo.pulse_width(500)
 
-DEBUG = 0
-
 SSID = 'YOUR_SSID'
-KEY =  'YOUR_KEY'
+KEY = 'YOUR_KEY'
 LOG_FILE = 'time.log'
 AUTH_FILE = '.htpasswd'
 DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 TURNS = 1
+DEBUG = 1
 
 # Set sensor settings
 sensor.reset()
@@ -40,10 +47,10 @@ class HTTPServer():
         return ure.compile('^{}$'.format(route))
 
     def route(self, route_str):
-        def decorator(f):
+        def decorator(func):
             route_pattern = self.build_route_pattern(route_str)
-            self.routes.append((route_pattern, f))
-            return f
+            self.routes.append((route_pattern, func))
+            return func
 
         return decorator
 
@@ -53,8 +60,7 @@ class HTTPServer():
             if m:
                 if m.group(0) is not None:
                     return dict([("key", m.group(0))]), route_function
-                else:
-                    return {}, route_function
+                return {}, route_function
         return None
 
     def run(self, host=None, port=None):
@@ -64,9 +70,9 @@ class HTTPServer():
         server.settimeout(0)  # Set server socket to non-blocking
         while True:
             try:
-                blue_led.off()
+                BLUE_LED.off()
                 conn, addr = server.accept()
-                blue_led.on()
+                BLUE_LED.on()
                 conn.settimeout(9.0)
                 request = conn.recv(1024).decode('utf-8')
 
@@ -80,10 +86,10 @@ class HTTPServer():
                         print('Route "{}" has not been registered'.format(path_info))
                     error(conn, '404 Not Found', 'Error 404: Page not found')
 
-            except OSError as err:
+            except OSError:
                 pass
             except:
-                blue_led.off()
+                BLUE_LED.off()
                 conn.close()
                 raise
 
@@ -97,26 +103,30 @@ app = HTTPServer()
 @app.route('/login')
 def index(key, conn, request):
     try:
-        (headers, body) = request.split("\r\n\r\n") # headers are split from body by a \r\n\r\n sequence
+        # headers are split from body by a \r\n\r\n sequence
+        (headers, body) = request.split("\r\n\r\n")
+        if DEBUG:
+            print(request)
+
         if body:
             data = ujson.loads(str(body))
             p = data["password"]
             v = read_value(AUTH_FILE)
-            if (p != v):
+            if p != v:
                 error(conn, '401 Unauthorized', 'Authentication failed.')
                 return
 
         elif not hastoken(conn, headers):
-           return
+            return
 
-        with open('/static/index.html', 'r') as html:
+        with open('/static/index.html', 'rb') as html:
             send_headers(conn, True)
             lf = utime.localtime(int(read_value(LOG_FILE)))
             ptag = '<p id="lastfeed">Last Feed: {} {:d} @ {:02d}:{:02d}</p>'.format(DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
-            response = html.read() % ptag
-            conn.send(response.encode('utf-8'))
+            nonce = ubinascii.hexlify(uos.urandom(16)).decode("ascii")
+            conn.send(html.read() % ('\'nonce-{}{}'.format(nonce, '\''), ptag, 'nonce={}'.format(nonce)))
     except OSError:
-        error(conn)
+        error(conn, '404 Not Found', 'Error 404: Page not found')
 
 
 @app.route('/(\d+.)')
@@ -124,8 +134,7 @@ def stream(key, conn, request):
     # Send multipart header
     conn.send("HTTP/1.1 200 OK\r\n" \
               "content-type: multipart/x-mixed-replace;boundary=stream\r\n" \
-              "content-security-policy: default-src *\r\n" \
-              "x-frame-options: SAMEORIGIN\r\n" \
+              "x-frame-options: deny\r\n" \
               "x-xss-protection: 1; mode=block\r\n" \
               "x-content-type-options: nosniff\r\n" \
               "vary: Accept-Encoding\r\n" \
@@ -133,8 +142,8 @@ def stream(key, conn, request):
     frame = sensor.snapshot()
     cframe = frame.compressed(quality=50)
     conn.send("\r\n--stream\r\n" \
-              "content-type: image/jpeg\r\n" \
-              "content-length:{}\r\n\r\n".format(cframe.size()))
+               "content-type: image/jpeg\r\n" \
+               "content-length:{}\r\n\r\n".format(cframe.size()))
     conn.send(cframe)
 
 
@@ -142,16 +151,16 @@ def stream(key, conn, request):
 def feed(key, conn, request):
     (headers, body) = request.split("\r\n\r\n")
     if not hastoken(conn, headers):
-       return
+        return
 
-    green_led.on()
+    GREEN_LED.on()
     counter = 0
     while counter < TURNS:
         servo.pulse_width(2100)
         utime.sleep_ms(400)
         servo.pulse_width(500)
         counter = counter + 1
-    green_led.off()
+    GREEN_LED.off()
     save_value(LOG_FILE, str(key[6:]))
     send_headers(conn)
 
@@ -159,22 +168,22 @@ def feed(key, conn, request):
 @app.route('/static/(.+)')
 def resource(key, conn, request):
     encoding = 'identity'
-    if (key.endswith(".js")):
+    if key.endswith(".js"):
         mimetype = 'application/javascript'
         # encoding = 'gzip'
-    elif (key.endswith(".css")):
+    elif key.endswith(".css"):
         mimetype = 'text/css'
         #encoding = 'gzip'
-    elif (key.endswith(".ico")):
+    elif key.endswith(".ico"):
         mimetype = 'image/x-icon'
-    elif (key.endswith(".svg")):
+    elif key.endswith(".svg"):
         mimetype = 'image/svg+xml'
-    elif (key.endswith(".png")):
+    elif key.endswith(".png"):
         mimetype = 'image/png'
     else:
         mimetype = 'text/html'
 
-    filesize = get_size(key)
+    #filesize = get_size(key)
 
     send_headers(conn, False, mimetype, encoding, 'max-age=604800')
 
@@ -182,24 +191,27 @@ def resource(key, conn, request):
         conn.send(f.read())
 
 
-def error(conn, code, message):
+def error(conn, http_code, html_message):
     conn.send("HTTP/1.1 {}\r\n" \
               "content-type: text/html\r\n" \
               "vary: Accept-Encoding\r\n" \
-              "cache-control: no-cache\r\n\r\n".format(code))
+              "cache-control: no-cache\r\n\r\n".format(http_code))
     html = """<!DOCTYPE html>
         <html><head><meta charset="UTF-8"></meta></head><body>
         <center><h3>{}</h3></center>
-        </body></html>""".format(message)
+        </body></html>""".format(html_message)
     conn.send(html.encode('utf-8'))
 
 
 def hastoken(conn, headers):
     headers = parse_headers(headers)
     if not isset(headers, 'cookie'):
-        with open('/static/login.html', 'r') as html:
+        #with open('/static/auth.js', 'rb') as html:
+           #hash_str(html.read().decode('utf-8'))
+        with open('/static/login.html', 'rb') as html:
             send_headers(conn)
-            conn.send(html.read().encode('utf-8'))
+            nonce = ubinascii.hexlify(uos.urandom(16)).decode("ascii")
+            conn.send(html.read() % ('\'nonce-{}{}'.format(nonce, '\''), 'nonce={}'.format(nonce)))
             return False
     return True
 
@@ -207,16 +219,15 @@ def hastoken(conn, headers):
 def send_headers(conn, cookie=False, mimetype='text/html', encoding='identity', cache='no-cache'):
     conn.send("HTTP/1.1 200 OK\r\n" \
               "content-type: {0}; charset=UTF-8\r\n" \
-              "access-control-allow-origin: http://23.127.160.111:8088\r\n" \
+              "access-control-allow-origin: *\r\n" \
               "access-control-allow-methods: POST, GET, OPTIONS\r\n" \
-              "content-security-policy: default-src *\r\n" \
+              "access-control-allow-headers: Origin\r\n" \
               "x-frame-options: deny\r\n" \
               "x-xss-protection: 1; mode=block\r\n" \
               "x-content-type-options: nosniff\r\n" \
               "content-encoding: {1}\r\n" \
-              "vary: accept-encoding\r\n" \
-              "cache-control: {2}\r\n{3}".format(mimetype, encoding, cache,
-                       "set-cookie: token={}; HttpOnly;\r\n\r\n".format(app.session_key) if cookie else "\r\n"))
+              "vary: Origin\r\n" \
+              "cache-control: {2}\r\n{3}".format(mimetype, encoding, cache, "set-cookie: token={}; HttpOnly;\r\n\r\n".format(app.session_key) if cookie else "\r\n"))
 
 
 def parse_headers(request):
@@ -245,27 +256,29 @@ def get_size(filename):
 def read_value(filename):
     v = str(0)
     try:
-        with open(filename) as f:
+        with open(filename, 'rb') as f:
             v = f.read()
             if not v:
                 v = str(0)
     except OSError:
         save_value(filename, v)
 
-    return v
+    return v.decode('utf-8')
 
 
 def save_value(filename, value):
     try:
-        with open(filename, "w") as f:
+        with open(filename, 'wb') as f:
             f.write(value)
     except OSError as err:
-        print(err)
-        pass
+        if DEBUG:
+            print(err)
 
-def hash(s):
-    hash = uhashlib.sha256(s.encode()).digest()
-    encoded = ubinascii.b2a_base64(hash)
+
+def hash_str(string_to_hash):
+    hashed = uhashlib.sha256(string_to_hash.encode()).digest()
+    encoded = ubinascii.b2a_base64(hashed)
+    print(encoded.decode("ascii"))
     return encoded
 
 
