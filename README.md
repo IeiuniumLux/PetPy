@@ -32,6 +32,7 @@ Part             | Qty
 [Date/Epoch Converter](http://www.esqsoft.com/javascript_examples/date-to-epoch.htm "Converter")<br />
 [Router Port Forwarding](https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/)<br />
 [Google Domains](https://domains.google/#/)<br />
+[Content Security Policy](https://developers.google.com/web/fundamentals/security/csp/#if_you_absolutely_must_use_it)<br />
 [FreeCAD](https://www.freecadweb.org/)<br />
 
 
