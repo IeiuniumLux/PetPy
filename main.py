@@ -1,5 +1,6 @@
 # Pet Feeder - By: Al Bee - Sun Nov 28 2017
 
+import gc
 import sensor
 import network
 import usocket
@@ -22,8 +23,8 @@ KEY = 'YOUR_KEY'
 LOG_FILE = 'time.log'
 AUTH_FILE = '.htpasswd'
 DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+STATUS = {200:"200 OK", 404:"404 Not Found", 401:"401 Unauthorized", 501:"501 Server Error"}
 TURNS = 1
-DEBUG = 1
 
 # Set sensor settings
 sensor.reset()
@@ -40,7 +41,8 @@ class HTTPServer():
 
     def __init__(self):
         self.routes = []
-        self.session_key = None
+        self.session_key = ubinascii.hexlify(uos.urandom(16)).decode("ascii")
+        self.debug = False
 
     @staticmethod
     def build_route_pattern(route):
@@ -63,7 +65,9 @@ class HTTPServer():
                 return {}, route_function
         return None
 
-    def run(self, host=None, port=None):
+    def run(self, host='', port=8088, debug=False):
+        gc.collect()
+        self.debug = debug
         server = usocket.socket(usocket.AF_INET, usocket.SOCK_STREAM)
         server.bind([host, port])
         server.listen(1)
@@ -82,9 +86,9 @@ class HTTPServer():
                     kwargs, route_function = route_match
                     route_function(**dict(kwargs, conn=conn, request=request))
                 else:
-                    if DEBUG:
+                    if debug:
                         print('Route "{}" has not been registered'.format(path_info))
-                    error(conn, '404 Not Found', 'Error 404: Page not found')
+                    error(conn, STATUS[404], 'Error 404: Page not found')
 
             except OSError:
                 pass
@@ -105,15 +109,14 @@ def index(key, conn, request):
     try:
         # headers are split from body by a \r\n\r\n sequence
         (headers, body) = request.split("\r\n\r\n")
-        if DEBUG:
+        if app.debug:
             print(request)
 
         if body:
             data = ujson.loads(str(body))
-            p = data["password"]
-            v = read_value(AUTH_FILE)
-            if p != v:
-                error(conn, '401 Unauthorized', 'Authentication failed.')
+            password = read_value(AUTH_FILE)
+            if data["password"] != password:
+                error(conn, STATUS[401], 'Authentication failed.')
                 return
 
         elif not hastoken(conn, headers):
@@ -121,12 +124,14 @@ def index(key, conn, request):
 
         with open('/static/index.html', 'rb') as html:
             send_headers(conn, True)
-            lf = utime.localtime(int(read_value(LOG_FILE)))
-            ptag = '<p id="lastfeed">Last Feed: {} {:d} @ {:02d}:{:02d}</p>'.format(DAY_ABBR[lf[6]], lf[2], lf[3], lf[4])
+            last_feed = utime.localtime(int(read_value(LOG_FILE)))
+            ptag = '<p id="lastfeed">Last Feed: {} {:d} @ {:02d}:{:02d}</p>'.format( \
+            DAY_ABBR[last_feed[6]], last_feed[2], last_feed[3], last_feed[4])
             nonce = ubinascii.hexlify(uos.urandom(16)).decode("ascii")
-            conn.send(html.read() % ('\'nonce-{}{}'.format(nonce, '\''), ptag, 'nonce={}'.format(nonce)))
+            conn.send(html.read() % ('\'nonce-{}{}'.format(nonce, '\''), ptag, \
+            'nonce={}'.format(nonce)))
     except OSError:
-        error(conn, '404 Not Found', 'Error 404: Page not found')
+        error(conn, STATUS[404], 'Error 404: Page not found')
 
 
 @app.route('/(\d+.)')
@@ -195,12 +200,8 @@ def error(conn, http_code, html_message):
     conn.send("HTTP/1.1 {}\r\n" \
               "content-type: text/html\r\n" \
               "vary: Accept-Encoding\r\n" \
-              "cache-control: no-cache\r\n\r\n".format(http_code))
-    html = """<!DOCTYPE html>
-        <html><head><meta charset="UTF-8"></meta></head><body>
-        <center><h3>{}</h3></center>
-        </body></html>""".format(html_message)
-    conn.send(html.encode('utf-8'))
+              "cache-control: no-cache\r\n\r\n" \
+              "<center><h3>{}</h3></center>".format(http_code, html_message))
 
 
 def hastoken(conn, headers):
@@ -211,7 +212,8 @@ def hastoken(conn, headers):
         with open('/static/login.html', 'rb') as html:
             send_headers(conn)
             nonce = ubinascii.hexlify(uos.urandom(16)).decode("ascii")
-            conn.send(html.read() % ('\'nonce-{}{}'.format(nonce, '\''), 'nonce={}'.format(nonce)))
+            conn.send(html.read() % ('\'nonce-{}{}'.format(nonce, '\''), \
+            'nonce={}'.format(nonce)))
             return False
     return True
 
@@ -227,7 +229,9 @@ def send_headers(conn, cookie=False, mimetype='text/html', encoding='identity', 
               "x-content-type-options: nosniff\r\n" \
               "content-encoding: {1}\r\n" \
               "vary: Origin\r\n" \
-              "cache-control: {2}\r\n{3}".format(mimetype, encoding, cache, "set-cookie: token={}; HttpOnly;\r\n\r\n".format(app.session_key) if cookie else "\r\n"))
+              "cache-control: {2}\r\n{3}".format(mimetype, encoding, cache, \
+              "set-cookie: token={}; HttpOnly;\r\n\r\n".format(app.session_key) \
+              if cookie else "\r\n"))
 
 
 def parse_headers(request):
@@ -271,7 +275,7 @@ def save_value(filename, value):
         with open(filename, 'wb') as f:
             f.write(value)
     except OSError as err:
-        if DEBUG:
+        if app.debug:
             print(err)
 
 
@@ -283,6 +287,4 @@ def hash_str(string_to_hash):
 
 
 if __name__ == '__main__':
-    #app.session_key = ubinascii.b2a_base64(uos.urandom(16)).decode("ascii")
-    app.session_key = ubinascii.hexlify(uos.urandom(16)).decode("ascii")
-    app.run('', 8088)
+    app.run(debug=False)
