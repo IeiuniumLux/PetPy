@@ -9,7 +9,6 @@ import utime
 import uos
 import ubinascii
 import uhashlib
-import ujson
 from pyb import LED
 from pyb import Servo
 
@@ -107,15 +106,14 @@ app = HTTPServer()
 @app.route('/login')
 def index(key, conn, request):
     try:
-        # headers are split from body by a \r\n\r\n sequence
-        (headers, body) = request.split("\r\n\r\n")
         if app.debug:
             print(request)
 
+        # headers are split from body by a \r\n\r\n sequence
+        (headers, body) = request.split("\r\n\r\n")
         if body:
-            data = ujson.loads(str(body))
             password = read_value(AUTH_FILE)
-            if data["password"] != password:
+            if body != password:
                 error(conn, STATUS[401], 'Authentication failed.')
                 return
 
@@ -196,19 +194,17 @@ def resource(key, conn, request):
         conn.send(f.read())
 
 
-def error(conn, http_code, html_message):
+def error(conn, status, message):
     conn.send("HTTP/1.1 {}\r\n" \
               "content-type: text/html\r\n" \
               "vary: Accept-Encoding\r\n" \
               "cache-control: no-cache\r\n\r\n" \
-              "<center><h3>{}</h3></center>".format(http_code, html_message))
+              "<center><h3>{}</h3></center>".format(status, message))
 
 
 def hastoken(conn, headers):
     headers = parse_headers(headers)
     if not isset(headers, 'cookie'):
-        #with open('/static/auth.js', 'rb') as html:
-           #hash_str(html.read().decode('utf-8'))
         with open('/static/login.html', 'rb') as html:
             send_headers(conn)
             nonce = ubinascii.hexlify(uos.urandom(16)).decode("ascii")
@@ -287,4 +283,4 @@ def hash_str(string_to_hash):
 
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)

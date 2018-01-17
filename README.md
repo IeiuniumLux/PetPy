@@ -1,11 +1,14 @@
 # PetPy
-PetPy is a DIY project that let you feed your pet remotely via a simple local HTTP server that serves one single user connection. It's built on [MicroPython](http://micropython.org), the lean implementation of the Python 3 standard library that is optimised to run on microcontrollers and in constrained environments. PetPy is simple and hackable enough that can be adapted for other projects or used for testing and learning. It can easly act as a simple interface to receive remote requests to control devices or read analog inputs like the kind used for IOT projects.
+PetPy is a DIY project that let you feed your pet remotely using a simple local HTTP server that serves one single user connection. It's built on [MicroPython](http://micropython.org), the lean implementation of the Python 3 standard library that is optimised to run on microcontrollers and in constrained environments. PetPy is simple and hackable enough that can be adapted for other projects or used for testing and learning. It can easly act as a simple interface to receive remote requests to control devices or read analog inputs like the kind used for IOT projects.
 
 ## How it works
 A food container is attached to a servo and when it turns, a few pellets/kibble/treats drop into the bowl. You can adjust the hole and size of the dispenser depending on whether you are feeding a fish, cat, dog, etc.
 
 ## Authentication
 PetPy requires a login first unless the user is detected in the session; which in that case just sends the index.html page.
+
+Behind wifi router
+If you want to run Blynk server behind WiFi-router and want it to be accessible from the Internet, you have to add port-forwarding rule on your router. This is required in order to forward all of the requests that come to the router within the local network to Blynk server.
 
 ## Parts
 
