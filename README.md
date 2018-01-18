@@ -5,7 +5,7 @@ PetPy is a simple local HTTP server that let you feed your pet remotely. It's bu
 A food container is attached to a servo and when it turns, a few pellets/kibble/treats drop into the bowl. You can adjust the hole and size of the dispenser depending on whether you are feeding a fish, cat, dog, etc. It serves only one single user connection.
 
 ## Authentication
-PetPy requires a login first unless the user is detected in the session; which in that case just sends the index.html page.
+PetPy requires a login first unless the user is detected in the session; which in that case just sends the index.html page. A Cookie is used to store the user session. However, the HttpOnly flag is set so it's not accessible through JavaScript and immune to XSS.
 
 ## Behind wifi router
 If you want to run PetPy server behind WiFi-router and want it to be accessible from the Internet, then you have to add [port-forwarding](https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/) rule on your router. This is required in order to forward all of the requests that come to the router within the local network to PetPy server.
