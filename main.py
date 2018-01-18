@@ -18,7 +18,7 @@ servo = Servo(3)  # P9
 servo.pulse_width(500)
 
 SSID = 'YOUR_SSID'
-KEY = 'YOUR_KEY'
+KEY =  'YOUR_KEY'
 LOG_FILE = 'time.log'
 AUTH_FILE = '.htpasswd'
 DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -103,7 +103,6 @@ app = HTTPServer()
 
 
 @app.route('/')
-@app.route('/login')
 def index(key, conn, request):
     try:
         if app.debug:
